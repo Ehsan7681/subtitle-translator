@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>مترجم زیرنویس هوشمند سینمایی</title>
+    
+    <!-- PWA Settings -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#111827">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="icon" type="image/png" href="icon.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        pop: {
+                            blue: '#3b82f6',
+                            blueDark: '#2563eb',
+                            purple: '#8b5cf6',
+                            purpleDark: '#7c3aed',
+                            red: '#ef4444',
+                            redDark: '#dc2626',
+                            gray: '#f3f4f6',
+                            grayDark: '#d1d5db',
+                            surface: '#ffffff',
+                            surfaceDark: '#1f2937'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Vazirmatn', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap');
+        
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            transition: background-color 0.3s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 3D Button Style (Softer Shadows) */
+        .btn-pop {
+            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+            border-bottom-width: 3px; 
+            transform: translateY(0);
+        }
+        .btn-pop:active {
+            border-bottom-width: 0px;
+            transform: translateY(3px);
+            margin-top: 3px;
+        }
+
+        .btn-blue { background-color: #3b82f6; border-color: #2563eb; color: white; }
+        .btn-purple { background-color: #8b5cf6; border-color: #7c3aed; color: white; }
+        .btn-red { background-color: #ef4444; border-color: #dc2626; color: white; }
+        .btn-gray { background-color: #f3f4f6; border-color: #d1d5db; color: #374151; }
+        .dark .btn-gray { background-color: #374151; border-color: #1f2937; color: #f3f4f6; }
+
+        /* Glassmorphism */
+        .glass {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .dark .glass {
+            background: rgba(17, 24, 39, 0.95);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
+
+        .subtitle-card.active {
+            border-right: 4px solid #3b82f6;
+            background-color: rgba(59, 130, 246, 0.15);
+        }
+    </style>
+</head>
+<body class="h-[100dvh] flex flex-col overflow-hidden bg-gray-50 text-gray-800 dark:bg-gray-950 dark:text-gray-100">
+
+    <!-- Header -->
+    <header class="glass sticky top-0 z-30 px-4 py-3 flex justify-between items-center shadow-sm shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="relative group">
+                <div class="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-lg blur opacity-25 group-hover:opacity-75 transition duration-200"></div>
+                <div class="relative bg-white dark:bg-gray-800 p-2 rounded-lg text-purple-600 dark:text-purple-400">
+                    <i class="fa-solid fa-closed-captioning text-2xl"></i>
+                    <i class="fa-solid fa-wand-magic-sparkles text-xs absolute -top-1 -right-1 text-yellow-500 animate-pulse"></i>
+                </div>
+            </div>
+            <div class="flex flex-col">
+                <h1 class="text-lg font-black tracking-tight text-gray-800 dark:text-white leading-tight">
+                    Subtitle<span class="text-purple-600 dark:text-purple-400">AI</span>
+                </h1>
+                <span class="text-[10px] text-gray-500 dark:text-gray-400 font-bold -mt-1 hidden sm:block">مترجم سینمایی هوشمند</span>
+            </div>
+        </div>
+        
+        <div class="flex gap-2">
+            <button onclick="toggleTheme()" class="btn-pop btn-gray w-10 h-10 rounded-xl flex items-center justify-center text-lg">
+                <i class="fa-solid fa-moon dark:hidden"></i>
+                <i class="fa-solid fa-sun hidden dark:block text-yellow-400"></i>
+            </button>
+            <button onclick="toggleSettings()" class="btn-pop btn-gray px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2">
+                <i class="fa-solid fa-sliders text-base"></i>
+                <span class="hidden sm:inline">تنظیمات</span>
+            </button>
+            <button onclick="exportSubtitle()" class="btn-pop btn-blue px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2">
+                <i class="fa-solid fa-download text-base"></i>
+                <span class="hidden sm:inline">دانلود</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex justify-center items-end sm:items-center sm:p-4 transition-all" onclick="handleModalClick(event)">
+        <div class="bg-white dark:bg-gray-900 w-full sm:max-w-3xl sm:rounded-3xl rounded-t-3xl shadow-2xl flex flex-col max-h-[85vh] animate-slide-up sm:animate-none border border-gray-200 dark:border-gray-800">
+            
+            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center shrink-0 bg-gray-50 dark:bg-gray-900/50 sm:rounded-t-3xl">
+                <h2 class="text-lg font-black text-gray-800 dark:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-gear text-purple-500"></i> تنظیمات ترجمه
+                </h2>
+                <button onclick="toggleSettings()" class="bg-gray-200 dark:bg-gray-800 text-gray-500 hover:text-red-500 w-8 h-8 rounded-full flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
+                <!-- Service Selection -->
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="setService('gemini')" id="btn-gemini" class="btn-pop p-4 rounded-2xl text-sm font-bold flex flex-col items-center gap-2 border-2 transition-all">
+                        <i class="fa-brands fa-google text-2xl"></i> 
+                        <span>Google Gemini</span>
+                    </button>
+                    <button onclick="setService('openrouter')" id="btn-openrouter" class="btn-pop p-4 rounded-2xl text-sm font-bold flex flex-col items-center gap-2 border-2 transition-all">
+                        <i class="fa-solid fa-microchip text-2xl"></i> 
+                        <span>OpenRouter</span>
+                    </button>
+                </div>
+
+                <!-- API Key -->
+                <div class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-700">
+                    <label class="block text-xs font-black mb-2 text-gray-500 dark:text-gray-400 uppercase tracking-wide">کلید API</label>
+                    <div class="flex gap-2">
+                        <input type="password" id="apiKeysInput" class="w-full bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 focus:border-purple-500 rounded-xl py-3 px-4 text-sm outline-none dir-ltr font-mono text-gray-800 dark:text-gray-200 transition-colors" placeholder="کلید را وارد کنید...">
+                        <button onclick="checkConnection()" id="checkConnBtn" class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 px-4 rounded-xl text-xs font-bold whitespace-nowrap transition-colors">
+                            بررسی
+                        </button>
+                    </div>
+                    <div id="connectionStatus" class="mt-2 text-xs font-bold h-4"></div>
+                </div>
+
+                <!-- Models & Language -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-xs font-black text-gray-500 dark:text-gray-400 uppercase">مدل هوش مصنوعی</label>
+                            <button onclick="refreshModels()" id="refreshModelsBtn" class="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-lg font-bold hover:bg-blue-200 transition">
+                                <i class="fa-solid fa-rotate mr-1"></i> دریافت لیست کامل
+                            </button>
+                        </div>
+                        <div class="relative">
+                            <select id="modelSelect" class="w-full bg-gray-100 dark:bg-gray-800 rounded-xl py-3 px-4 text-sm border-r-8 border-transparent outline-none dir-ltr font-bold text-gray-700 dark:text-gray-200 appearance-none">
+                                <option value="" disabled selected>ابتدا کلید API را وارد و بروزرسانی کنید</option>
+                            </select>
+                            <div class="absolute left-3 top-3.5 pointer-events-none text-gray-400"><i class="fa-solid fa-chevron-down text-xs"></i></div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-black mb-2 text-gray-500 dark:text-gray-400 uppercase">زبان مقصد</label>
+                        <div class="relative">
+                            <select id="targetLang" class="w-full bg-gray-100 dark:bg-gray-800 rounded-xl py-3 px-4 text-sm border-r-8 border-transparent outline-none dir-ltr font-bold text-gray-700 dark:text-gray-200 appearance-none">
+                                <optgroup label="Popular">
+                                    <option value="Persian">فارسی (Persian)</option>
+                                    <option value="English">انگلیسی (English)</option>
+                                    <option value="Arabic">عربی (Arabic)</option>
+                                    <option value="Turkish">ترکی (Turkish)</option>
+                                    <option value="Kurdish">کردی (Kurdish)</option>
+                                    <option value="German">آلمانی (German)</option>
+                                    <option value="French">فرانسوی (French)</option>
+                                </optgroup>
+                                <optgroup label="Europe">
+                                    <option value="Spanish">اسپانیایی (Spanish)</option>
+                                    <option value="Italian">ایتالیایی (Italian)</option>
+                                    <option value="Russian">روسی (Russian)</option>
+                                    <option value="Portuguese">پرتغالی (Portuguese)</option>
+                                    <option value="Dutch">هلندی (Dutch)</option>
+                                    <option value="Swedish">سوئدی (Swedish)</option>
+                                    <option value="Polish">لهستانی (Polish)</option>
+                                    <option value="Ukrainian">اوکراینی (Ukrainian)</option>
+                                </optgroup>
+                                <optgroup label="Asia">
+                                    <option value="Japanese">ژاپنی (Japanese)</option>
+                                    <option value="Korean">کره‌ای (Korean)</option>
+                                    <option value="Chinese (Simplified)">چینی ساده (Chinese)</option>
+                                    <option value="Hindi">هندی (Hindi)</option>
+                                    <option value="Urdu">اردو (Urdu)</option>
+                                    <option value="Pashto">پشتو (Pashto)</option>
+                                    <option value="Thai">تایلندی (Thai)</option>
+                                    <option value="Vietnamese">ویتنامی (Vietnamese)</option>
+                                </optgroup>
+                            </select>
+                            <div class="absolute left-3 top-3.5 pointer-events-none text-gray-400"><i class="fa-solid fa-chevron-down text-xs"></i></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tone Selection -->
+                <div>
+                     <label class="block text-xs font-black mb-2 text-gray-500 dark:text-gray-400 uppercase">لحن و سبک ترجمه</label>
+                     <div class="relative">
+                        <select id="toneSelect" class="w-full bg-gray-100 dark:bg-gray-800 rounded-xl py-3 px-4 text-sm border-r-8 border-transparent outline-none font-bold text-gray-700 dark:text-gray-200 appearance-none">
+                            <option value="standard">استاندارد (ترجمه رسمی و معمولی)</option>
+                            <option value="uncensored">🔥 بدون سانسور (رک، خیابانی و کاملا باز)</option>
+                            <option value="casual">محاوره‌ای (دوستانه و صمیمی)</option>
+                            <option value="slang">اسلنگ و اصطلاحی (پر از اصطلاحات روزمره)</option>
+                            <option value="action">اکشن/جنایی (تند، خشن و کوتاه)</option>
+                            <option value="drama">درام/رمانتیک (احساسی، ادبی و عمیق)</option>
+                            <option value="comedy">کمدی/طنز (بامزه و شوخ‌طبع)</option>
+                            <option value="historical">تاریخی/حماسی (ادبیات کهن و فاخر)</option>
+                            <option value="scifi">علمی‌تخیلی/سایبرپانک (تکنیکی و آینده‌نگر)</option>
+                            <option value="horror">ترسناک (مبهم و دلهره‌آور)</option>
+                            <option value="documentary">مستند/علمی (دقیق، خشک و رسمی)</option>
+                            <option value="kids">کودکانه (ساده، شاد و قابل فهم)</option>
+                            <option value="poetic">شاعرانه (موزون و ادبی)</option>
+                            <option value="journalistic">ژورنالیستی (خبری و گزارش‌گونه)</option>
+                        </select>
+                        <div class="absolute left-3 top-3.5 pointer-events-none text-gray-400"><i class="fa-solid fa-chevron-down text-xs"></i></div>
+                     </div>
+                </div>
+
+                <!-- Sliders -->
+                <div>
+                    <div class="flex justify-between text-xs font-black mb-2 text-gray-500 dark:text-gray-400 uppercase">
+                        <span>میزان خلاقیت هوش مصنوعی</span>
+                        <span id="tempValue" class="text-purple-500 font-mono">0.3</span>
+                    </div>
+                    <input type="range" id="tempRange" min="0" max="1" step="0.1" class="w-full accent-purple-500 h-2 bg-gray-200 dark:bg-gray-800 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between text-[10px] text-gray-400 mt-1">
+                        <span>دقیق و منطقی</span>
+                        <span>خلاق و آزاد</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-5 border-t border-gray-100 dark:border-gray-800 shrink-0 bg-gray-50 dark:bg-gray-900/50 sm:rounded-b-3xl">
+                <button onclick="saveSettings(); toggleSettings();" class="btn-pop btn-purple w-full py-3 rounded-2xl text-base font-black shadow-lg shadow-purple-500/20">
+                    <i class="fa-solid fa-check mr-2"></i> ذخیره تنظیمات
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        
+        <!-- Upload Overlay -->
+        <div id="uploadOverlay" class="absolute inset-0 z-20 bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center p-6 text-center transition-opacity duration-300">
+            <div class="border-4 border-dashed border-gray-300 dark:border-gray-800 rounded-[2rem] p-8 sm:p-16 w-full max-w-lg hover:border-purple-400 dark:hover:border-purple-500 transition-all duration-300 cursor-pointer group bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm" onclick="document.getElementById('fileInput').click()">
+                <div class="w-28 h-28 bg-purple-50 dark:bg-purple-900/20 rounded-full flex items-center justify-center mx-auto mb-8 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300 shadow-2xl shadow-purple-500/10">
+                    <i class="fa-solid fa-cloud-arrow-up text-6xl text-purple-500"></i>
+                </div>
+                <h2 class="text-3xl font-black mb-4 text-gray-800 dark:text-white tracking-tight">فایل زیرنویس را انتخاب کنید</h2>
+                <p class="text-gray-400 font-bold text-sm bg-gray-100 dark:bg-gray-800 inline-block px-4 py-2 rounded-full">SRT یا VTT</p>
+                <input type="file" id="fileInput" accept=".srt,.vtt" class="hidden" onchange="handleFileUpload(this.files[0])">
+            </div>
+        </div>
+
+        <!-- Panels Container -->
+        <div class="flex-1 flex flex-col md:flex-row w-full h-full">
+            <!-- Original Text Panel -->
+            <div class="flex-1 flex flex-col border-b-2 md:border-b-0 md:border-l-2 border-gray-200 dark:border-gray-800 h-1/2 md:h-full relative">
+                <div class="bg-white dark:bg-gray-900 p-3 flex justify-between items-center border-b border-gray-100 dark:border-gray-800">
+                    <span class="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                        <i class="fa-solid fa-file-lines"></i> زیرنویس اصلی
+                    </span>
+                    <span id="originalLineCount" class="bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-lg text-xs font-black text-gray-600 dark:text-gray-300">0</span>
+                </div>
+                <div id="originalContainer" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-[#0a0a0a]">
+                    <!-- Items -->
+                </div>
+            </div>
+
+            <!-- Translated Text Panel -->
+            <div class="flex-1 flex flex-col h-1/2 md:h-full relative">
+                <div class="bg-purple-50 dark:bg-purple-900/10 p-3 flex justify-between items-center border-b border-purple-100 dark:border-purple-900/20">
+                    <span class="text-xs font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest flex items-center gap-2">
+                        <i class="fa-solid fa-language text-lg"></i> خروجی ترجمه
+                    </span>
+                    <div class="flex gap-2">
+                        <span id="translatedLineCount" class="bg-white dark:bg-gray-800 px-3 py-1 rounded-lg text-xs font-black text-purple-600 dark:text-purple-300">0</span>
+                        <button onclick="copyTranslation()" class="text-purple-500 hover:text-purple-700 dark:hover:text-white transition transform hover:scale-110"><i class="fa-regular fa-copy text-lg"></i></button>
+                    </div>
+                </div>
+                <div id="translatedContainer" class="flex-1 overflow-y-auto p-4 space-y-4 bg-purple-50/30 dark:bg-[#0d0d12]">
+                    <!-- Items -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer Control -->
+    <footer class="glass border-t border-gray-200 dark:border-gray-800 p-4 pb-8 sm:pb-4 shrink-0 z-40">
+        <div class="max-w-7xl mx-auto w-full">
+            <!-- Progress Info -->
+            <div class="flex justify-between text-[10px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 mb-3 font-mono">
+                <span class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></div> <span id="progressPercent">0%</span></span>
+                <span class="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-gray-600 dark:text-gray-300"><span id="timeElapsed">00:00</span> <i class="fa-regular fa-clock ml-1"></i></span>
+            </div>
+            
+            <div class="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-2 mb-4 overflow-hidden">
+                <div id="progressBar" class="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300 shadow-[0_0_15px_rgba(139,92,246,0.5)]" style="width: 0%"></div>
+            </div>
+
+            <div class="flex gap-3">
+                <!-- Reset Button -->
+                <button onclick="resetApp()" class="btn-pop btn-red w-12 sm:w-16 rounded-2xl flex items-center justify-center text-lg" title="پاکسازی و شروع مجدد">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+
+                <button id="stopBtn" onclick="stopTranslation()" class="hidden btn-pop btn-gray flex-1 py-3 rounded-2xl font-black text-sm text-red-500 border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/10">
+                    <i class="fa-solid fa-pause ml-2"></i> توقف موقت
+                </button>
+                
+                <button id="startBtn" onclick="startTranslationProcess()" class="btn-pop btn-purple flex-1 py-3 rounded-2xl font-black text-sm shadow-xl shadow-purple-500/20 disabled:opacity-50 disabled:transform-none disabled:border-b-0 group">
+                    <i class="fa-solid fa-play ml-2 group-hover:scale-110 transition-transform"></i> <span id="startBtnText">شروع ترجمه هوشمند</span>
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW registered'))
+                    .catch(err => console.log('SW registration failed', err));
+            });
+        }
+    </script>
+
+    <!-- App Logic -->
+    <script>
+        // --- Theme & Initial Setup ---
+        function toggleTheme() {
+            const html = document.documentElement;
+            const isDark = html.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        }
+        if (localStorage.getItem('theme') === 'light') document.documentElement.classList.remove('dark');
+
+        const state = {
+            subtitles: [],
+            isTranslating: false,
+            abortController: null,
+            startTime: null,
+            processedLines: 0,
+            originalFileName: "subtitle", 
+            settings: {
+                provider: 'gemini',
+                apiKeys: '',
+                model: '',
+                targetLang: 'Persian',
+                tone: 'standard',
+                temperature: 0.3,
+                chunkSize: 20
+            }
+        };
+
+        const defaultModels = {
+            gemini: ['gemini-2.0-flash-exp', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.0-pro'],
+            openrouter: ['google/gemini-flash-1.5', 'openai/gpt-4o', 'anthropic/claude-3.5-sonnet']
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSettings();
+            updateUIFromSettings();
+            document.getElementById('tempRange').addEventListener('input', (e) => document.getElementById('tempValue').textContent = e.target.value);
+            
+            const savedSubs = localStorage.getItem('last_subtitles');
+            const savedName = localStorage.getItem('last_filename');
+            if(savedName) state.originalFileName = savedName;
+
+            if(savedSubs) {
+                try {
+                    const parsed = JSON.parse(savedSubs);
+                    if(parsed && parsed.length > 0) {
+                        state.subtitles = parsed;
+                        document.getElementById('uploadOverlay').classList.add('opacity-0', 'pointer-events-none');
+                        renderSubtitles();
+                        updateProgressUI();
+                        updateStartButtonText();
+                    }
+                } catch(e) {}
+            }
+        });
+
+        // --- Settings Logic ---
+        function toggleSettings() {
+            document.getElementById('settingsModal').classList.toggle('hidden');
+        }
+
+        function handleModalClick(event) {
+            if (event.target.id === 'settingsModal') toggleSettings();
+        }
+
+        function setService(service) {
+            state.settings.provider = service;
+            updateUIFromSettings();
+            document.getElementById('modelSelect').innerHTML = '<option disabled selected>لیست را بروزرسانی کنید...</option>';
+        }
+
+        function saveSettings() {
+            state.settings.apiKeys = document.getElementById('apiKeysInput').value;
+            state.settings.model = document.getElementById('modelSelect').value;
+            state.settings.targetLang = document.getElementById('targetLang').value;
+            state.settings.tone = document.getElementById('toneSelect').value;
+            state.settings.temperature = parseFloat(document.getElementById('tempRange').value);
+            localStorage.setItem('translator_settings', JSON.stringify(state.settings));
+            updateUIFromSettings();
+        }
+
+        function loadSettings() {
+            const stored = localStorage.getItem('translator_settings');
+            if(stored) state.settings = { ...state.settings, ...JSON.parse(stored) };
+        }
+
+        function updateUIFromSettings() {
+            const isGemini = state.settings.provider === 'gemini';
+            
+            const activeClass = "btn-blue border-b-4 border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400";
+            const inactiveClass = "btn-gray bg-gray-50 dark:bg-gray-800 text-gray-400 border-gray-200 dark:border-gray-700";
+            
+            document.getElementById('btn-gemini').className = `btn-pop p-4 rounded-2xl text-sm font-bold flex flex-col items-center gap-2 border-2 transition-all ${isGemini ? activeClass : inactiveClass}`;
+            document.getElementById('btn-openrouter').className = `btn-pop p-4 rounded-2xl text-sm font-bold flex flex-col items-center gap-2 border-2 transition-all ${!isGemini ? activeClass : inactiveClass}`;
+
+            document.getElementById('apiKeysInput').value = state.settings.apiKeys;
+            document.getElementById('apiKeysInput').placeholder = isGemini ? "مثال: AIzaSyD..." : "مثال: sk-or-v1...";
+            
+            document.getElementById('targetLang').value = state.settings.targetLang;
+            document.getElementById('toneSelect').value = state.settings.tone;
+            document.getElementById('tempRange').value = state.settings.temperature;
+            document.getElementById('tempValue').textContent = state.settings.temperature;
+            
+            // Re-populate if model is set
+            if(state.settings.model) {
+                const select = document.getElementById('modelSelect');
+                if(select.options.length <= 1) {
+                    // Temporarily add current model until refresh
+                    const opt = document.createElement('option');
+                    opt.value = state.settings.model;
+                    opt.textContent = state.settings.model;
+                    opt.selected = true;
+                    select.add(opt);
+                }
+            }
+        }
+
+        // --- Connection & Model Fetching (Real Implementation) ---
+        async function checkConnection() {
+            const keys = document.getElementById('apiKeysInput').value.split(',').map(k => k.trim()).filter(k=>k);
+            const status = document.getElementById('connectionStatus');
+            
+            if(!keys.length) return status.innerHTML = "<span class='text-red-500'>کلید API را وارد کنید</span>";
+            status.innerHTML = "<span class='text-blue-500'><i class='fa-solid fa-spinner fa-spin'></i> در حال بررسی...</span>";
+
+            try {
+                const key = keys[0];
+                if(state.settings.provider === 'gemini') {
+                    // Check Gemini
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+                    if(res.ok) status.innerHTML = "<span class='text-green-500'><i class='fa-solid fa-check'></i> اتصال موفق!</span>";
+                    else throw new Error('Error');
+                } else {
+                    // Check OpenRouter
+                    const res = await fetch('https://openrouter.ai/api/v1/auth/key', {
+                        headers: { 'Authorization': `Bearer ${key}` }
+                    });
+                    if(res.ok) status.innerHTML = "<span class='text-green-500'><i class='fa-solid fa-check'></i> اتصال موفق!</span>";
+                    else throw new Error('Error');
+                }
+                refreshModels(); // Auto refresh on success
+            } catch(e) {
+                status.innerHTML = "<span class='text-red-500'><i class='fa-solid fa-xmark'></i> خطا در اتصال</span>";
+            }
+        }
+
+        async function refreshModels() {
+            const btn = document.getElementById('refreshModelsBtn');
+            const select = document.getElementById('modelSelect');
+            const keys = document.getElementById('apiKeysInput').value.split(',').map(k => k.trim()).filter(k=>k);
+
+            if(!keys.length) return alert("لطفا ابتدا کلید API را وارد کنید");
+
+            btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> دریافت...";
+            select.innerHTML = "<option>در حال بارگذاری...</option>";
+
+            try {
+                let models = [];
+                const key = keys[0];
+
+                if(state.settings.provider === 'gemini') {
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+                    const data = await res.json();
+                    // Filter for generateContent support
+                    models = data.models
+                        .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
+                        .map(m => m.name.replace('models/', ''));
+                } else {
+                    const res = await fetch('https://openrouter.ai/api/v1/models');
+                    const data = await res.json();
+                    models = data.data.map(m => m.id);
+                }
+
+                select.innerHTML = "";
+                models.sort().forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m;
+                    opt.textContent = m;
+                    if(m === state.settings.model) opt.selected = true;
+                    select.appendChild(opt);
+                });
+                
+                if(!state.settings.model || !models.includes(state.settings.model)) {
+                    select.selectedIndex = 0;
+                }
+
+            } catch(e) {
+                alert("خطا در دریافت لیست مدل‌ها: " + e.message);
+                populateModelDropdownDefaults();
+            } finally {
+                btn.innerHTML = "<i class='fa-solid fa-rotate'></i> دریافت لیست کامل";
+            }
+        }
+
+        function populateModelDropdownDefaults() {
+             const select = document.getElementById('modelSelect');
+             select.innerHTML = '';
+             const models = defaultModels[state.settings.provider];
+             models.forEach(m => {
+                 const opt = document.createElement('option');
+                 opt.value = m;
+                 opt.textContent = m;
+                 select.appendChild(opt);
+             });
+        }
+
+        // --- File Handling & UI ---
+        function handleFileUpload(file) {
+            if(!file) return;
+            state.originalFileName = file.name.replace(/\.[^/.]+$/, "");
+            localStorage.setItem('last_filename', state.originalFileName);
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                parseSubtitle(e.target.result);
+                document.getElementById('uploadOverlay').classList.add('opacity-0', 'pointer-events-none');
+            };
+            reader.readAsText(file);
+        }
+
+        function parseSubtitle(text) {
+            const pattern = /(\d+)\r?\n(\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3})\r?\n([\s\S]*?)(?=\r?\n\r?\n\d+|\r?\n\r?\n?$)/g;
+            state.subtitles = [];
+            let match;
+            while ((match = pattern.exec(text)) !== null) {
+                state.subtitles.push({ id: match[1], time: match[2], originalText: match[3].trim(), translatedText: '' });
+            }
+            if(state.subtitles.length === 0) {
+                 const blocks = text.trim().split(/\n\s*\n/);
+                 state.subtitles = blocks.map((block) => {
+                     const lines = block.split('\n');
+                     if(lines.length >= 3) return { id: lines[0], time: lines[1], originalText: lines.slice(2).join('\n').trim(), translatedText: '' };
+                     return null;
+                 }).filter(Boolean);
+            }
+            localStorage.setItem('last_subtitles', JSON.stringify(state.subtitles));
+            renderSubtitles();
+            updateStartButtonText();
+        }
+
+        function renderSubtitles() {
+            const oCon = document.getElementById('originalContainer');
+            const tCon = document.getElementById('translatedContainer');
+            oCon.innerHTML = ''; tCon.innerHTML = '';
+            document.getElementById('originalLineCount').textContent = state.subtitles.length;
+
+            const fragO = document.createDocumentFragment();
+            const fragT = document.createDocumentFragment();
+
+            state.subtitles.forEach((sub, i) => {
+                const divO = document.createElement('div');
+                divO.className = 'subtitle-card p-4 rounded-2xl bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-300 shadow-sm';
+                divO.id = `orig-${i}`;
+                divO.innerHTML = `<div class="text-[10px] text-gray-400 font-bold mb-2 flex justify-between tracking-wide"><span><i class="fa-solid fa-hashtag mr-1"></i>${sub.id}</span><span>${sub.time}</span></div><div dir="auto" class="font-medium leading-relaxed">${sub.originalText.replace(/\n/g, '<br>')}</div>`;
+                fragO.appendChild(divO);
+
+                const divT = document.createElement('div');
+                divT.className = 'subtitle-card p-4 rounded-2xl bg-white dark:bg-gray-800 border-2 border-transparent focus-within:border-purple-400 dark:focus-within:border-purple-500 text-sm shadow-sm transition-all duration-300';
+                divT.id = `trans-${i}`;
+                
+                const textarea = document.createElement('textarea');
+                textarea.className = 'w-full bg-transparent border-none focus:ring-0 text-gray-800 dark:text-gray-100 resize-none overflow-hidden placeholder-gray-300 dark:placeholder-gray-600 font-medium leading-relaxed';
+                textarea.value = sub.translatedText;
+                textarea.placeholder = '...';
+                textarea.oninput = (e) => {
+                    state.subtitles[i].translatedText = e.target.value;
+                    autoResize(e.target);
+                };
+                divT.innerHTML = `<div class="text-[10px] text-gray-400 font-bold mb-2 flex justify-between tracking-wide"><span><i class="fa-solid fa-hashtag mr-1"></i>${sub.id}</span><span>${sub.time}</span></div>`;
+                divT.appendChild(textarea);
+                fragT.appendChild(divT);
+                
+                requestAnimationFrame(() => autoResize(textarea));
+            });
+            oCon.appendChild(fragO);
+            tCon.appendChild(fragT);
+        }
+
+        function autoResize(el) {
+            el.style.height = 'auto';
+            el.style.height = (el.scrollHeight) + 'px';
+        }
+
+        // --- Translation Engine ---
+        async function startTranslationProcess() {
+            const keys = state.settings.apiKeys.split(',').map(k => k.trim()).filter(k => k);
+            if(keys.length === 0) return alert('لطفا کلید API را وارد کنید.');
+
+            state.isTranslating = true;
+            state.abortController = new AbortController();
+            state.startTime = Date.now();
+            state.processedLines = 0;
+
+            let startIndex = state.subtitles.findIndex(s => !s.translatedText);
+            
+            if (startIndex === -1) {
+                if(confirm('ترجمه تمام شده است. آیا مجدد از اول شروع شود؟')) startIndex = 0;
+                else { state.isTranslating = false; return; }
+            }
+
+            setRunningState(true);
+
+            try {
+                // Determine prompt based on tone
+                const tonePrompts = {
+                    'uncensored': "STYLE: VERY COLLOQUIAL, STREET SLANG, R-RATED. DO NOT CENSOR PROFANITY. BE RAW AND REAL.",
+                    'action': "STYLE: FAST-PACED, SHORT SENTENCES, AGGRESSIVE, PUNCHY.",
+                    'drama': "STYLE: EMOTIONAL, POETIC, DEEP, NUANCED.",
+                    'historical': "STYLE: ARCHAIC, OLD-FASHIONED, FORMAL, EPIC.",
+                    'comedy': "STYLE: HUMOROUS, WITTY, FUNNY, PLAYFUL.",
+                    'scifi': "STYLE: TECHNOLOGICAL, FUTURISTIC, PRECISE.",
+                    'horror': "STYLE: OMINOUS, SCARY, SUSPENSEFUL.",
+                    'casual': "STYLE: CASUAL CONVERSATION, FRIENDLY.",
+                    'slang': "STYLE: HEAVY USE OF SLANG AND IDIOMS.",
+                    'poetic': "STYLE: ARTISTIC, RHYTHMIC, BEAUTIFUL.",
+                    'journalistic': "STYLE: OBJECTIVE, REPORTING STYLE, FORMAL.",
+                    'kids': "STYLE: SIMPLE, EASY WORDS, CHEERFUL.",
+                    'standard': "STYLE: STANDARD SUBTITLE TRANSLATION."
+                };
+                const toneInstruction = tonePrompts[state.settings.tone] || tonePrompts['standard'];
+                const prompt = `Translate the following subtitle lines to ${state.settings.targetLang}.
+                ${toneInstruction}
+                RULES:
+                1. Return ONLY a JSON Array of strings.
+                2. The length of the array MUST match the input exactly.
+                3. Preserve all line breaks and punctuation.
+                4. Do NOT include markdown formatting.`;
+
+                for (let i = startIndex; i < state.subtitles.length; i += state.settings.chunkSize) {
+                    if (!state.isTranslating) break;
+                    
+                    const chunkEnd = Math.min(i + state.settings.chunkSize, state.subtitles.length);
+                    const chunkData = state.subtitles.slice(i, chunkEnd);
+                    const textArray = chunkData.map(s => s.originalText);
+                    
+                    highlightChunk(i, chunkEnd);
+
+                    let result = [];
+                    let success = false;
+
+                    for (const key of keys) {
+                        try {
+                            const signal = state.abortController.signal;
+                            if (state.settings.provider === 'gemini') {
+                                const url = `https://generativelanguage.googleapis.com/v1beta/models/${state.settings.model || 'gemini-1.5-flash'}:generateContent?key=${key}`;
+                                const res = await fetch(url, {
+                                    method: 'POST',
+                                    headers: {'Content-Type': 'application/json'},
+                                    body: JSON.stringify({
+                                        contents: [{ parts: [{ text: prompt + "\nINPUT JSON: " + JSON.stringify(textArray) }] }],
+                                        generationConfig: { responseMimeType: "application/json", temperature: state.settings.temperature }
+                                    }), signal
+                                });
+                                if(!res.ok) throw new Error('Gemini Error');
+                                result = JSON.parse((await res.json()).candidates[0].content.parts[0].text);
+                            } else {
+                                const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                                    method: 'POST',
+                                    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json', 'HTTP-Referer': window.location.href },
+                                    body: JSON.stringify({
+                                        model: state.settings.model || 'google/gemini-flash-1.5',
+                                        messages: [{role: 'system', content: prompt}, {role: 'user', content: JSON.stringify(textArray)}],
+                                        temperature: state.settings.temperature
+                                    }), signal
+                                });
+                                if(!res.ok) throw new Error('OpenRouter Error');
+                                let content = (await res.json()).choices[0].message.content.trim();
+                                result = JSON.parse(content.replace(/```json|```/g, ''));
+                            }
+                            success = true;
+                            break;
+                        } catch (e) { console.warn('API Retry', e); }
+                    }
+
+                    if (!success) throw new Error('همه کلیدها خطا دادند. لطفا اتصال اینترنت یا کلید را بررسی کنید.');
+                    
+                    while(result.length < textArray.length) result.push("");
+
+                    for(let j=0; j<chunkData.length; j++) {
+                        const idx = i + j;
+                        state.subtitles[idx].translatedText = result[j];
+                        const ta = document.querySelector(`#trans-${idx} textarea`);
+                        if(ta) { ta.value = result[j]; autoResize(ta); }
+                    }
+
+                    localStorage.setItem('last_subtitles', JSON.stringify(state.subtitles));
+                    state.processedLines += chunkData.length;
+                    updateProgressUI(i + chunkData.length, state.subtitles.length);
+                    await new Promise(r => setTimeout(r, 500)); 
+                }
+            } catch (e) {
+                if(e.name !== 'AbortError') alert('خطا: ' + e.message);
+            } finally {
+                setRunningState(false);
+                updateStartButtonText();
+            }
+        }
+
+        // --- Utils & Exports ---
+        function resetApp() {
+            if(confirm("آیا مطمئن هستید؟ تمام فایل‌ها و ترجمه‌ها پاک خواهند شد.")) {
+                state.subtitles = [];
+                state.processedLines = 0;
+                localStorage.removeItem('last_subtitles');
+                localStorage.removeItem('last_filename');
+                renderSubtitles();
+                updateProgressUI(0,0);
+                document.getElementById('uploadOverlay').classList.remove('opacity-0', 'pointer-events-none');
+                document.getElementById('fileInput').value = '';
+                stopTranslation();
+            }
+        }
+
+        function stopTranslation() {
+            if(state.isTranslating) {
+                if (confirm("آیا مطمئن هستید که می‌خواهید ترجمه را متوقف کنید؟")) {
+                    if(state.abortController) state.abortController.abort();
+                    state.isTranslating = false;
+                    setRunningState(false);
+                }
+            }
+        }
+
+        function setRunningState(isRunning) {
+            document.getElementById('startBtn').classList.toggle('hidden', isRunning);
+            document.getElementById('stopBtn').classList.toggle('hidden', !isRunning);
+            if(!isRunning) removeHighlights();
+        }
+
+        function exportSubtitle() {
+            if(!state.subtitles.length) return alert('فایلی برای دانلود وجود ندارد');
+            const content = state.subtitles.map((s,i) => `${i+1}\n${s.time}\n${s.translatedText||s.originalText}\n`).join('\n');
+            const blob = new Blob([content], { type: 'text/srt' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            
+            const toneSuffix = state.settings.tone === 'standard' ? '' : `_${state.settings.tone}`;
+            const fileName = `${state.originalFileName}_${state.settings.targetLang}${toneSuffix}.srt`;
+            
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        function highlightChunk(start, end) {
+            removeHighlights();
+            for(let i=start; i<end; i++) {
+                document.getElementById(`orig-${i}`)?.classList.add('active');
+                document.getElementById(`trans-${i}`)?.classList.add('active');
+            }
+            document.getElementById(`trans-${start}`)?.scrollIntoView({behavior: 'smooth', block: 'center'});
+        }
+        function removeHighlights() { document.querySelectorAll('.active').forEach(e => e.classList.remove('active')); }
+        function updateProgressUI(curr, total) {
+            if(!curr) { curr = state.subtitles.filter(s=>s.translatedText).length; total = state.subtitles.length; }
+            const pct = total ? Math.round((curr/total)*100) : 0;
+            document.getElementById('progressBar').style.width = `${pct}%`;
+            document.getElementById('progressPercent').textContent = `${pct}%`;
+            document.getElementById('translatedLineCount').textContent = curr;
+        }
+        function updateStartButtonText() {
+            const count = state.subtitles.filter(s => s.translatedText).length;
+            const btn = document.getElementById('startBtnText');
+            btn.textContent = (count > 0 && count < state.subtitles.length) ? "ادامه ترجمه هوشمند" : "شروع ترجمه هوشمند";
+        }
+        function copyTranslation() {
+             const content = state.subtitles.map((s,i) => `${i+1}\n${s.time}\n${s.translatedText||s.originalText}\n`).join('\n');
+             navigator.clipboard.writeText(content).then(() => alert('کپی شد'));
+        }
+    </script>
+</body>
+</html>
